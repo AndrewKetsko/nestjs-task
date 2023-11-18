@@ -12,11 +12,10 @@ import * as bcrypt from 'bcrypt';
 export class UserRepository extends Repository<User> {
   async signUp(authCredentialsDto: AuthCredentialsDto): Promise<void> {
     const { username, password } = authCredentialsDto;
-
     const user = new User();
     user.username = username;
     user.salt = await bcrypt.genSalt();
-    user.password = await bcrypt.hash(password, 10);
+    user.password = await bcrypt.hash(password, user.salt);
     try {
       await user.save();
     } catch (error) {
@@ -25,6 +24,18 @@ export class UserRepository extends Repository<User> {
       } else {
         throw new InternalServerErrorException();
       }
+    }
+  }
+
+  async validateUserPassword(
+    authCredentialsDto: AuthCredentialsDto,
+  ): Promise<string> {
+    const { username, password } = authCredentialsDto;
+    const user = await this.findOneBy({ username });
+    if (user && (await user.validatePassword(password))) {
+      return user.username;
+    } else {
+      return null;
     }
   }
 }
